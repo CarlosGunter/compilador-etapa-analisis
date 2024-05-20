@@ -1,7 +1,7 @@
 # Autor: Carlos Alberto Gutierrez Trejo
 # Compiladores - Analizador semanico
 from lexer import lex
-from semantic import analyze
+from semantic import semantic
 
 test_list = [
     {
@@ -35,4 +35,4 @@ if __name__ == '__main__':
         print(f"{test['name']}:")
         table = list(lex(test["input"]))
         # print(table)
-        analyze(table)
+        semantic(table)

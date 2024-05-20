@@ -3,84 +3,86 @@
 # Notas:
 # Cada analisis debe retornar la posicion siguiente del ultimo token analizado
 from lexer import lex
-# Mapa de identificadores
-ambitMap = {
-    'GLOBAL': {
-        'parent': [],
-        'ident': 0,
-        'vars': {}
-    }
-}
-# Funcion principal
-def analyze(tokens):
-    currScope = 'GLOBAL'
-    prevIdent = 0
-    line= 1
-    # Recorrido de tokens
-    iT = 0
-    while iT < len(tokens)-1:
-        # Obtener token
-        token = tokens[iT]
-        i, group, value, ident = token["i"], token["type"], token["value"], token["ident"]
-        # print(f"{value} -> {group}, {ident}")
-        # Verificar identacion
-        if currScope == 'GLOBAL' and ident > 0:
-            print(f"No se esperaba identacion en ambito global. Linea {line}")
-        if ident < prevIdent:
-            # Buscar identacion padre
-            for pnt in ambitMap[currScope]["parent"]:
-                if ambitMap[pnt]["ident"] == ident:
-                    currScope = pnt
-                    print(f"{currScope} -> Ambito padre. Linea {line}")
-                    break
-                if pnt == ambitMap[currScope]["parent"][-1]:
-                    print(f"Identacion no valida. Linea {line}")
-                    break
-        # Verificar si el token es una funcion
-        if value == 'def':
-            # Crear ambito de la funcion
-            pos, currScope = functions(tokens, token, currScope, line)
-            if pos == -1: break
-            iT = pos
-        # Verificar si el token es una estructura de control
-        elif type == 'STRUCT_C':
-            # Crear ambito de la estructura
-            pos, currScope = structure(tokens, token, currScope, line)
-            iT = pos
-        # Verificar si el token es una asignacion
-        elif group == 'ASSIGN':
-            # Verificar si el token anterior es un ID
-            if tokens[i - 1]["type"] != 'ID':
-                print(f"Se esperaba un ID. Linea {line}")
-                iT = i+1
-                continue
-            # Realizar asignacion
-            pos = assign(tokens, token, currScope, line, tokens[i - 1]["value"])
-            if pos == -1: break
-            iT = pos
-        # Verificar si el token es un operador aritmetico o relacional
-        elif group in ['AR_OP', 'REL_OP']:
-            # Realizar operacion
-            pos, _ = expression(tokens, token, currScope, line)
-            if pos == -1: break
-            iT = pos
-        # Incrementar contador de tokens
-        else: iT += 1
-        # Guardar identacion
-        prevIdent = ident
-        # Incrementar contador de lineas
-        if group == 'LINE_END': line += 1
-        # Imprimir mapa de ambitos
-    print(ambitMap)
 
-# Buscar las variables desde el ambito actual hasta los padres
-def findVar(var, scope):
-    # Buscar variable en el ambito actual
-    if var in ambitMap[scope]["vars"]: return ambitMap[scope]["vars"][var]
-    # Buscar variable en el ambito padre
-    for pnt in ambitMap[scope]["parent"]:
-        if var in ambitMap[pnt]["vars"]: return ambitMap[pnt]["vars"][var]
-    return None
+class semantic:
+    def __init__(self, tokens):
+        # Mapa de identificadores
+        self.ambitMap = {
+            'GLOBAL': {
+                'parent': [],
+                'ident': 0,
+                'vars': {}
+            }
+        }
+        self.currScope = 'GLOBAL'
+        self.prevIdent = 0
+        self.line = 1
+
+        self.analyze(tokens)
+    
+    # Funcion principal
+    def analyze(self, tokens):
+        global ambitMap
+        ambitMap = self.ambitMap
+        currScope = 'GLOBAL'
+        prevIdent = 0
+        line= 1
+        # Recorrido de tokens
+        iT = 0
+        while iT < len(tokens)-1:
+            # Obtener token
+            token = tokens[iT]
+            i, group, value, ident = token["i"], token["type"], token["value"], token["ident"]
+            # print(f"{value} -> {group}, {ident}")
+            # Verificar identacion
+            if currScope == 'GLOBAL' and ident > 0:
+                print(f"No se esperaba identacion en ambito global. Linea {line}")
+            if ident < prevIdent:
+                # Buscar identacion padre
+                for pnt in ambitMap[currScope]["parent"]:
+                    if ambitMap[pnt]["ident"] == ident:
+                        currScope = pnt
+                        print(f"{currScope} -> Ambito padre. Linea {line}")
+                        break
+                    if pnt == ambitMap[currScope]["parent"][-1]:
+                        print(f"Identacion no valida. Linea {line}")
+                        break
+            # Verificar si el token es una funcion
+            if value == 'def':
+                # Crear ambito de la funcion
+                pos, currScope = functions(tokens, token, currScope, line)
+                if pos == -1: break
+                iT = pos
+            # Verificar si el token es una estructura de control
+            elif type == 'STRUCT_C':
+                # Crear ambito de la estructura
+                pos, currScope = structure(tokens, token, currScope, line)
+                iT = pos
+            # Verificar si el token es una asignacion
+            elif group == 'ASSIGN':
+                # Verificar si el token anterior es un ID
+                if tokens[i - 1]["type"] != 'ID':
+                    print(f"Se esperaba un ID. Linea {line}")
+                    iT = i+1
+                    continue
+                # Realizar asignacion
+                pos = assign(tokens, token, currScope, line, tokens[i - 1]["value"])
+                if pos == -1: break
+                iT = pos
+            # Verificar si el token es un operador aritmetico o relacional
+            elif group in ['AR_OP', 'REL_OP']:
+                # Realizar operacion
+                pos, _ = expression(tokens, token, currScope, line)
+                if pos == -1: break
+                iT = pos
+            # Incrementar contador de tokens
+            else: iT += 1
+            # Guardar identacion
+            prevIdent = ident
+            # Incrementar contador de lineas
+            if group == 'LINE_END': line += 1
+            # Imprimir mapa de ambitos
+        print(ambitMap)
 
 def functions(tokens, token, parent, line):
     # Lexema: def ID (ID, ID, ...):
@@ -265,11 +267,11 @@ def structure(tokens, token, parent, line):
             ('type', 'ID'),
             ('value', 'in'),
             ('value', 'range'),
-            ('value', '(')
+            ('value', '('),
             ('type', 'INT'),
-            ('value', ',')
+            ('value', ','),
             ('type', 'INT'),
-            ('value', ')')
+            ('value', ')'),
             ('value', ':')
         ]
         for j in len(lex):
@@ -304,6 +306,15 @@ def structure(tokens, token, parent, line):
     # Retornar posicion y nuevo scope
     return pos, currScope
 
+# Buscar las variables desde el ambito actual hasta los padres
+def findVar(var, scope):
+    # Buscar variable en el ambito actual
+    if var in ambitMap[scope]["vars"]: return ambitMap[scope]["vars"][var]
+    # Buscar variable en el ambito padre
+    for pnt in ambitMap[scope]["parent"]:
+        if var in ambitMap[pnt]["vars"]: return ambitMap[pnt]["vars"][var]
+    return None
+
 if __name__ == '__main__':
     print("Ingresa el codigo. (Presiona Ctrl + Z + Enter para finalizar):")
     inp = []
@@ -316,4 +327,4 @@ if __name__ == '__main__':
     inp.append("\n  ")
     code = "\n".join(inp)
     table = lex(code)
-    analyze(list(table))
+    semantic(list(table))
