@@ -2,7 +2,8 @@ import re
 
 # Definir tokens usando expresiones regulares
 tokens = [
-    ('KEYWORD', r'def|if|else|elif|while|for|in|print|:'),
+    ('KEYWORD', r'def|in|print|:'),
+    ('STRUCT_C', r'if|else|elif|while|for'),
     ('IDENT', r"(?<=\n)\s+"),
     ('ASSIGN', r'='),
     ('STRING', r'".*?"'),

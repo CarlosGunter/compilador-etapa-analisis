@@ -42,6 +42,11 @@ def analyze(tokens):
             pos, currScope = functions(tokens, token, currScope, line)
             if pos == -1: break
             iT = pos
+        # Verificar si el token es una estructura de control
+        elif type == 'STRUCT_C':
+            # Crear ambito de la estructura
+            pos, currScope = structure(tokens, token, currScope, line)
+            iT = pos
         # Verificar si el token es una asignacion
         elif group == 'ASSIGN':
             # Verificar si el token anterior es un ID
@@ -175,15 +180,16 @@ def assign(tokens, token, currScope, line, assignID):
 def expression(tokens, token, currScope, line):
     # Lexema: FACTOR OPERADOR FACTOR... OPERADOR FACTOR
     # Token actual -> OPERADOR
-    i, value = token["i"], token["value"]
+    i, value, type = token["i"], token["value"], token["type"]
     pos = i
     currType = ''
     # Recorrer operadores
     for j in range(i, len(tokens), 2):
         pos = j
         evalType = True
-        # Romper si termina la linea
+        # Romper si termina la expresion
         if tokens[j]["type"] in ('LINE_END', 'PAREN'): break
+        elif tokens[j]["value"] == ':': break
         # Verificar operador
         if tokens[j]["type"] not in ['AR_OP', 'REL_OP']:
             print(f"Operador no valido. Linea {line}")
@@ -218,7 +224,85 @@ def expression(tokens, token, currScope, line):
             print(f"Tipos incompatibles '{pv_v}'({prev}) y '{nx_v}'({next}). Linea {line}")
         else:
             currType = "FLOAT" if value in ['/', '%'] else prev
+            currType = "BOOL" if type == 'REL_OP' else currType
     return pos, currType
+
+def structure(tokens, token, parent, line):
+    # Lexema: While | If | For | EXPRESIN:
+    i, value, ident = token["i"], token["value"], token["ident"]
+    currScope = f'{value}_{line}'
+    pos = i+1
+    # Crear ambito
+    newParent = ambitMap[parent]["parent"][:] # Copiar scope padre
+    newParent.insert(0, parent) # Agregar padre
+    ambitMap[currScope] = {
+        'parent': newParent,
+        'vars': {},
+    }
+    print(f"{currScope} -> Ambito creado. Linea {line} (Resolucion de nombres)")
+    # While o If -> While | if | elif EXPRESION:
+    if value in ['while', 'if', 'elif']:
+        lex = [ # Lexema del while o if
+            ('type', 'ID'),
+            ('type', 'REL_OP'),
+            ('type', 'ID'),
+            ('value', ':')
+        ]
+        for j in len(lex):
+            k, v = lex[j]
+            pos = i+j+1
+            if tokens[pos][k] != 'LINE_END':
+                print(f"Expresion incompleta. Linea {line}")
+                break
+            if tokens[pos][k] != v:
+                print(f"Se esperaba '{v}'. Linea {line}")
+        # Verificar si hay un operador
+        if tokens[i + 2]["type"] in ['REL_OP', 'AR_OP']:
+            pos, _ = expression(tokens, tokens[i+1], parent, line)
+    # For ID in EXPRESION:
+    elif value == 'for':
+        lex = [ # Lexema del for
+            ('type', 'ID'),
+            ('value', 'in'),
+            ('value', 'range'),
+            ('value', '(')
+            ('type', 'INT'),
+            ('value', ',')
+            ('type', 'INT'),
+            ('value', ')')
+            ('value', ':')
+        ]
+        for j in len(lex):
+            k, v = lex[j]
+            pos = i+j+1
+            if tokens[i+j+1][k] != 'LINE_END':
+                print(f"Expresion incompleta. Linea {line}")
+                break
+            if tokens[i+j+1][k] != v:
+                print(f"Se esperaba '{v}'. Linea {line}")
+        # Verificar si hay un ID
+        if tokens[i + 1]["type"] == 'ID':
+            # Agregar ID al mapa
+            ambitMap[currScope]["vars"][tokens[i + 1]["value"]] = {
+                'type': '',
+                'value': None,
+            }
+            print(f"{tokens[i + 1]['value']} -> tipo: {'INT'}, ambito: {currScope}")
+        return pos
+    # Else:
+    elif value == 'else':
+        if tokens[i + 1]["value"] != ':':
+            print(f"Se esperaba ':'. Linea {line}")
+        if tokens[i + 2]['type'] != 'LINE_END':
+            print(f"Se esperaba una nueva linea. Linea {line}")
+        pos = i+1
+    # Verificar identacion en siguiente linea
+    if tokens[pos + 1]["type"] == 'LINE_END' and tokens[pos + 2]["ident"] <= ident:
+        print(f"Se esperaba identacion. Linea {line+1}")
+    if tokens[pos]["type"] == 'LINE_END' and tokens[pos + 1]["ident"] <= ident:
+        print(f"Se esperaba identacion. Linea {line+1}")
+    # Retornar posicion y nuevo scope
+    return pos, currScope
 
 if __name__ == '__main__':
     print("Ingresa el codigo. (Presiona Ctrl + Z + Enter para finalizar):")
