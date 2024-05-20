@@ -117,7 +117,7 @@ def functions(tokens, token, parent, line):
             # Verificar si hay parametros y agregarlos al mapa
             if tokens[j]["type"] == 'ID':
                 ambitMap[funcID]["vars"][tokens[j]["value"]] = {
-                    'type': '',
+                    'type': 'Any',
                     'value': None,
                 }
                 print(f"{tokens[j]['value']} -> tipo: PARAM, ambito: {funcID}")
@@ -134,7 +134,7 @@ def functions(tokens, token, parent, line):
                 print(f"Formato de parametro incorrecto en la funcion. Linea {line}")
     # Verificar identacion
     if tokens[pos + 1]["type"] == 'LINE_END' and tokens[pos + 2]["ident"] <= ident:
-        print(f"Se esperaba identacion. Linea {line+1}")
+        print(f"Se esperaba identacion de bloque. Linea {line+1}")
         return -1, parent
     # Agregar identacion
     ambitMap[funcID]["ident"] = tokens[pos + 2]["ident"]
@@ -143,8 +143,9 @@ def functions(tokens, token, parent, line):
 
 def assign(tokens, token, currScope, line, assignID):
     # Lexema: ID = EXPRESION
-    i, value, ident = token["i"], token["value"], token["ident"]
+    i = token["i"]
     pos = i
+    currType = 'Any'
     # Verificar si la asignacion dispone solo de un factor
     # ID = factor
     if tokens[i + 2]["type"] == 'LINE_END':
@@ -158,25 +159,24 @@ def assign(tokens, token, currScope, line, assignID):
         if tokens[i + 1]["type"] == 'ID' and not findVar(tokens[i + 1]["value"], currScope):
             print(f"'{tokens[i + 1]['value']}' aun no inicializada. Linea {line}")
             return pos+2
-        # ID = ID
-        ambitMap[currScope]["vars"][assignID] = {
-            'type': tokens[i + 1]["type"],
-            'value': tokens[i + 1]["value"],
-        }
-        print(f"{assignID} -> tipo: {ambitMap[currScope]['vars'][assignID]['type']}, ambito: {currScope}")
-        return pos+2
+        pos += 2
+        # Determinar el tipo de la variable
+        currType = findVar(tokens[i + 1]["value"], currScope)["type"] if tokens[i + 1]["type"] == 'ID' else tokens[i + 1]["type"]
     # Resolver la expresion
     # Lexema -> ID = TERMINOS
-    if tokens[i + 2]["type"] in ['REL_OP', 'AR_OP']: # Buscar operadores
+    elif tokens[i + 2]["type"] in ['REL_OP', 'AR_OP']: # Buscar operadores
         pos, currType = expression(tokens, tokens[i+2], currScope, line)
-        if currType: # Si hay un tipo
-            ambitMap[currScope]["vars"][assignID] = {
-                'type': currType,
-                'value': None,
-            }
-        print(f"{assignID} -> tipo: {ambitMap[currScope]['vars'][assignID]['type']}, ambito: {currScope}")
     # Si no hay operadores
-    else: print(f"Se esperaba un operador. Linea {line}")
+    else:
+        print(f"Se esperaba un operador. Linea {line}")
+        # Buscar siguinte salto de linea
+        while tokens[pos]["type"] != 'LINE_END': pos += 1
+    # Agregar variable al mapa
+    ambitMap[currScope]["vars"][assignID] = {
+        'type': currType,
+        'value': None,
+    }
+    print(f"{assignID} -> tipo: {ambitMap[currScope]['vars'][assignID]['type']}, ambito: {currScope}")
     return pos
 
 def expression(tokens, token, currScope, line):
@@ -184,7 +184,7 @@ def expression(tokens, token, currScope, line):
     # Token actual -> OPERADOR
     i, value, type = token["i"], token["value"], token["type"]
     pos = i
-    currType = ''
+    currType = 'Any'
     # Recorrer operadores
     for j in range(i, len(tokens), 2):
         pos = j
@@ -220,7 +220,7 @@ def expression(tokens, token, currScope, line):
         prev = findVar(pv_v, currScope)["type"] if pv_t == "ID" else pv_t
         next = findVar(nx_v, currScope)["type"] if nx_t == "ID" else nx_t
         # Verificar si la variable es un parametro en una funcion
-        if '' in [prev, next]: continue
+        if 'Any' in [prev, next]: continue
         # Verificar si los tipos son compatibles
         if prev != next and not prev in ['INT', 'FLOAT'] and not next in ['INT', 'FLOAT']:
             print(f"Tipos incompatibles '{pv_v}'({prev}) y '{nx_v}'({next}). Linea {line}")
@@ -301,7 +301,7 @@ def structure(tokens, token, parent, line):
     if tokens[pos + 1]["type"] == 'LINE_END' and tokens[pos + 2]["ident"] <= ident:
         print(f"Se esperaba identacion. Linea {line+1}")
     if tokens[pos]["type"] == 'LINE_END' and tokens[pos + 1]["ident"] <= ident:
-        print(f"Se esperaba identacion. Linea {line+1}")
+        print(f"Se esperaba identacion de bloque. Linea {line+1}")
     # Retornar posicion y nuevo scope
     return pos, currScope
 
