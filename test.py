@@ -2,6 +2,7 @@
 # Compiladores - Analizador semanico
 from lexer import lex
 from semantic import semantic
+import numpy as np
 
 test_list = [
     {
@@ -24,7 +25,29 @@ z = x + y
         'name': "Funciones",
         'input': '''
 def my_func(x, y):
-    x
+    z = 0
+        '''
+    },
+    {
+        'name': "Estructura for",
+        'input': '''
+for i in range(0, 10):
+    i
+        '''
+    },
+    {
+        'name': "Estructura while",
+        'input': '''
+x = 0
+while x > 10:
+    x = x + 1
+        '''
+    },
+    {
+        'name': "Estructura if",
+        'input': '''
+if 15 > 10:
+    x = 1
         '''
     }
 ]
@@ -34,5 +57,7 @@ if __name__ == '__main__':
         print("------------------------------------------------------------")
         print(f"{test['name']}:")
         table = list(lex(test["input"]))
-        # print(table)
+        print("***********************************************************")
+        print(np.asarray(table))
+        print("***********************************************************")
         semantic(table)

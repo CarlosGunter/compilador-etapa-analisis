@@ -18,5 +18,5 @@ Análisis semántico:
 - Detección de errores específicos.
 
 > [!NOTE]
-> No se permiten agrupaciones en las expresiones.
-> Solo se permite una condición en las estructuras.
+> - No se permiten agrupaciones en las expresiones.
+> - Solo se permite una condición en las estructuras.

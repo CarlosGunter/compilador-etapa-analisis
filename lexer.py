@@ -28,16 +28,12 @@ def lex(input_str):
     i = 0
     ident = 0
     pos = 0
-    declared = False
     while pos < len(input_str):
         match = regex.match(input_str, pos)
         token_type = match.lastgroup
         token_value = match.group(token_type)
         if token_type == 'IDENT': ident = len(token_value)
         if token_type == 'LINE_END': ident = 0
-        if token_type == 'FUNC': declared = True
-        if token_type == ':': declared = False
-        if token_type == 'ID' and declared: token_type = 'PARAM'
         if not token_type in ['WS', 'LINE_COMMENT', 'IDENT']:
             yield {
                 "i": i,

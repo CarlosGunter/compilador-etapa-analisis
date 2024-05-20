@@ -19,7 +19,7 @@ class semantic:
         self.line = 1
 
         self.analyze(tokens)
-    
+
     # Funcion principal
     def analyze(self, tokens):
         global ambitMap
@@ -54,7 +54,7 @@ class semantic:
                 if pos == -1: break
                 iT = pos
             # Verificar si el token es una estructura de control
-            elif type == 'STRUCT_C':
+            elif group == 'STRUCT_C':
                 # Crear ambito de la estructura
                 pos, currScope = structure(tokens, token, currScope, line)
                 iT = pos
@@ -86,7 +86,7 @@ class semantic:
 
 def functions(tokens, token, parent, line):
     # Lexema: def ID (ID, ID, ...):
-    i, value, ident = token["i"], token["value"], token["ident"]
+    i, ident = token["i"], token["ident"]
     pos = i
     # ID de la funcion
     if tokens[i + 1]["type"] == 'ID': funcID = tokens[i + 1]["value"]
@@ -194,7 +194,7 @@ def expression(tokens, token, currScope, line):
         elif tokens[j]["value"] == ':': break
         # Verificar operador
         if tokens[j]["type"] not in ['AR_OP', 'REL_OP']:
-            print(f"Operador no valido. Linea {line}")
+            print(f"Operador {tokens[j]["value"]} no valido. Linea {line}")
             pos += 1
             break
         # Obtener factores
@@ -217,8 +217,8 @@ def expression(tokens, token, currScope, line):
         # Verificar si se pueden evaluar los tipos
         if not evalType: continue
         # Obtener tipos de los factores
-        prev = ambitMap[currScope]["vars"][pv_v]["type"] if pv_t == "ID" else pv_t
-        next = ambitMap[currScope]["vars"][nx_v]["type"] if nx_t == "ID" else nx_t
+        prev = findVar(pv_v, currScope)["type"] if pv_t == "ID" else pv_t
+        next = findVar(nx_v, currScope)["type"] if nx_t == "ID" else nx_t
         # Verificar si la variable es un parametro en una funcion
         if '' in [prev, next]: continue
         # Verificar si los tipos son compatibles
@@ -245,42 +245,42 @@ def structure(tokens, token, parent, line):
     # While o If -> While | if | elif EXPRESION:
     if value in ['while', 'if', 'elif']:
         lex = [ # Lexema del while o if
-            ('type', 'ID'),
-            ('type', 'REL_OP'),
-            ('type', 'ID'),
-            ('value', ':')
+            ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
+            ('type', ['REL_OP']),
+            ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
+            ('value', [':'])
         ]
-        for j in len(lex):
+        for j in range(len(lex)):
             k, v = lex[j]
             pos = i+j+1
-            if tokens[pos][k] != 'LINE_END':
+            if tokens[pos]['type'] == 'LINE_END':
                 print(f"Expresion incompleta. Linea {line}")
                 break
-            if tokens[pos][k] != v:
+            if not tokens[pos][k] in v:
                 print(f"Se esperaba '{v}'. Linea {line}")
         # Verificar si hay un operador
-        if tokens[i + 2]["type"] in ['REL_OP', 'AR_OP']:
+        if tokens[i + 3]["type"] == 'REL_OP':
             pos, _ = expression(tokens, tokens[i+1], parent, line)
     # For ID in EXPRESION:
     elif value == 'for':
         lex = [ # Lexema del for
-            ('type', 'ID'),
-            ('value', 'in'),
-            ('value', 'range'),
-            ('value', '('),
-            ('type', 'INT'),
-            ('value', ','),
-            ('type', 'INT'),
-            ('value', ')'),
-            ('value', ':')
+            ('type', ['ID']),
+            ('value', ['in']),
+            ('value', ['range']),
+            ('value', ['(']),
+            ('type', ['INT', 'ID']),
+            ('value', [',']),
+            ('type', ['INT', 'ID']),
+            ('value', [')']),
+            ('value', [':'])
         ]
-        for j in len(lex):
+        for j in range(len(lex)):
             k, v = lex[j]
             pos = i+j+1
-            if tokens[i+j+1][k] != 'LINE_END':
+            if tokens[pos]['type'] == 'LINE_END':
                 print(f"Expresion incompleta. Linea {line}")
                 break
-            if tokens[i+j+1][k] != v:
+            if not tokens[pos][k] in v:
                 print(f"Se esperaba '{v}'. Linea {line}")
         # Verificar si hay un ID
         if tokens[i + 1]["type"] == 'ID':
@@ -290,7 +290,6 @@ def structure(tokens, token, parent, line):
                 'value': None,
             }
             print(f"{tokens[i + 1]['value']} -> tipo: {'INT'}, ambito: {currScope}")
-        return pos
     # Else:
     elif value == 'else':
         if tokens[i + 1]["value"] != ':':
