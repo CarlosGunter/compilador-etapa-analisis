@@ -37,7 +37,7 @@ class semantic:
             # Verificar identacion
             if currScope == 'GLOBAL' and ident > 0:
                 print(f"No se esperaba identacion en ambito global. Linea {line}")
-            if ident < prevIdent and prevIdent != 0:
+            if ident < prevIdent and prevIdent != 0 and group != 'LINE_END':
                 # Buscar identacion padre
                 for pnt in ambitMap[currScope]["parent"]:
                     if ambitMap[pnt]["ident"] == ident:
@@ -75,12 +75,13 @@ class semantic:
                 pos, _ = expression(tokens, token, currScope, line)
                 if pos == -1: break
                 iT = pos
+            # Verificar si el token es un salto de linea
+            # Incrementar contador de lineas
+            elif group == 'LINE_END': line += 1; iT += 1
             # Incrementar contador de tokens
             else: iT += 1
-            # Guardar identacion
-            prevIdent = ident
-            # Incrementar contador de lineas
-            if group == 'LINE_END': line += 1
+            # Guardar identacion sin contar los saltos de linea
+            if group != 'LINE_END': prevIdent = ident
             # Imprimir mapa de ambitos
         print(ambitMap)
 
@@ -172,11 +173,12 @@ def assign(tokens, token, currScope, line, assignID):
         # Buscar siguinte salto de linea
         while tokens[pos]["type"] != 'LINE_END': pos += 1
     # Agregar variable al mapa
-    ambitMap[currScope]["vars"][assignID] = {
-        'type': currType,
-        'value': None,
-    }
-    print(f"{assignID} -> tipo: {ambitMap[currScope]['vars'][assignID]['type']}, ambito: {currScope}")
+    if not findVar(assignID, currScope):
+        ambitMap[currScope]["vars"][assignID] = {
+            'type': currType,
+            'value': None,
+        }
+    print(f"{assignID} -> tipo: {findVar(assignID, currScope)['type']}, ambito: {currScope}")
     return pos
 
 def expression(tokens, token, currScope, line):
@@ -302,6 +304,8 @@ def structure(tokens, token, parent, line):
         print(f"Se esperaba identacion. Linea {line+1}")
     if tokens[pos]["type"] == 'LINE_END' and tokens[pos + 1]["ident"] <= ident:
         print(f"Se esperaba identacion de bloque. Linea {line+1}")
+    # Agregar identacion
+    ambitMap[currScope]["ident"] = tokens[pos + 2]["ident"]
     # Retornar posicion y nuevo scope
     return pos, currScope
 
