@@ -37,7 +37,7 @@ class semantic:
             # Verificar identacion
             if currScope == 'GLOBAL' and ident > 0:
                 print(f"No se esperaba identacion en ambito global. Linea {line}")
-            if ident < prevIdent:
+            if ident < prevIdent and prevIdent != 0:
                 # Buscar identacion padre
                 for pnt in ambitMap[currScope]["parent"]:
                     if ambitMap[pnt]["ident"] == ident:
