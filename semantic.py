@@ -63,7 +63,7 @@ class semantic:
                     # Realizar asignacion
                     iT = assign(tokens, token, currScope, line, tokens[i - 1]["value"])
             # Verificar si el token es un operador aritmetico o relacional
-            elif group in ['AR_OP', 'REL_OP']:
+            elif group in ['AR_OP', 'REL_OP', 'LOG_OP']:
                 # Realizar operacion
                 iT, _ = expression(tokens, token, currScope, line)
             # Verificar si el token es un salto de linea
@@ -155,7 +155,7 @@ def assign(tokens, token, currScope, line, assignID):
         currType = findVar(tokens[i + 1]["value"], currScope)["type"] if tokens[i + 1]["type"] == 'ID' else tokens[i + 1]["type"]
     # Resolver la expresion
     # Lexema -> ID = TERMINOS
-    elif tokens[i + 2]["type"] in ['REL_OP', 'AR_OP']: # Buscar operadores
+    elif tokens[i + 2]["type"] in ['REL_OP', 'AR_OP', 'LOG_OP']:
         pos, currType = expression(tokens, tokens[i+2], currScope, line)
     # Si no hay operadores
     else:
@@ -188,9 +188,9 @@ def expression(tokens, token, currScope, line, end=('type', 'LINE_END')):
         if tokens[j]["type"] in ('LINE_END', 'PAREN'): break # Borrar
         elif tokens[j]["value"] == ':': break # Borrar
         # Verificar operador
-        if tokens[j]["type"] not in ['AR_OP', 'REL_OP']:
+        if not tokens[j]["type"] in ['AR_OP', 'REL_OP', 'LOG_OP']:
             print(f"Operador {tokens[j]["value"]} no valido. Linea {line}")
-            pos += 1
+            pos, _ = findEnd(tokens, j, line, end=('type', 'LINE_END'))
             break
         # Obtener factores
         pv_v, pv_t = tokens[i - 1]["value"], tokens[i - 1]["type"]
@@ -221,7 +221,7 @@ def expression(tokens, token, currScope, line, end=('type', 'LINE_END')):
             print(f"Tipos incompatibles '{pv_v}'({prev}) y '{nx_v}'({next}). Linea {line}")
         else:
             currType = "FLOAT" if value in ['/', '%'] else prev
-            currType = "BOOL" if type == 'REL_OP' else currType
+            currType = "BOOL" if type in ['REL_OP', 'LOG_OP'] else currType
     return pos, currType
 
 def structure(tokens, token, parent, line):
@@ -249,23 +249,6 @@ def structure(tokens, token, parent, line):
             # Verificar si hay operadores
             if tokens[i + 2]["type"] in ['REL_OP', 'AR_OP', 'LOG_OP']:
                 pos, _ = expression(tokens, tokens[i+2], parent, line, end=end)
-        # lex = [ # Lexema del while o if
-        #     ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
-        #     ('type', ['REL_OP']),
-        #     ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
-        #     ('value', [':'])
-        # ]
-        # for j in range(len(lex)):
-        #     k, v = lex[j]
-        #     pos = i+j+1
-        #     if tokens[pos]['type'] == 'LINE_END':
-        #         print(f"Expresion incompleta. Linea {line}")
-        #         break
-        #     if not tokens[pos][k] in v:
-        #         print(f"Se esperaba '{v}'. Linea {line}")
-        # # Verificar si hay un operador
-        # if tokens[i + 3]["type"] == 'REL_OP':
-        #     pos, _ = expression(tokens, tokens[i+1], parent, line)
     # For ID in EXPRESION:
     elif value == 'for':
         lex = [ # Lexema del for

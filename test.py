@@ -42,14 +42,14 @@ for i in range(0, 10):
         'name': "Estructura while",
         'input': '''
 x = 0
-while x > 10:
+while x > 10 or x:
     x = x + 1
         '''
     },
     {
         'name': "Estructura if-else",
         'input': '''
-if 15 > 10:
+if 15 > 10 and 15 < 20:
     x = 1
 elif 15 < 10:
     x = 0

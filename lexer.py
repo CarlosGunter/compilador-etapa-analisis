@@ -2,23 +2,23 @@ import re
 
 # Definir tokens usando expresiones regulares
 tokens = [
+    ('LINE_COMMENT', r'#.*'),
     ('KEYWORD', r'def|in|print|:'),
     ('STRUCT_C', r'if|else|elif|while|for'),
-    ('IDENT', r"(?<=\n)\s+"),
+    ('AR_OP', r'[+\-*/%]'),
+    ('REL_OP', r'[<>=!]=|<|>'),
+    ('LOG_OP', r'and|or'),
     ('ASSIGN', r'='),
+    ('IDENT', r"(?<=\n)\s+"),
     ('STRING', r'".*?"'),
     ('FLOAT', r'\d+\.\d+'),
     ('INT', r'\d+'),
     ('BOOL', r'True|False'),
     ('ID', r'[a-zA-Z_][a-zA-Z_0-9]*'),
-    ('AR_OP', r'[+\-*/%]'),
-    ('REL_OP', r'[<>=!]=|<|>'),
-    ('LOG_OP', r'and|or'),
     ('PAREN', r'[()]'),
     ('COMMA', r','),
     ('LINE_END', r'\n'),
     ('WS', r'\s+'),  # Ignorar espacios en blanco
-    ('LINE_COMMENT', r'#.*'),  # Comentario de línea
     ('UNRECOGNIZED', r'.'),  # Caracteres no reconocidos
 ]
 
