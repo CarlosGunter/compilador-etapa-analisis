@@ -14,8 +14,6 @@ Análisis semántico:
 - Verificación de tipos.
 - Resolución de nombres.
 - Análisis de contexto.
-- Optimización de código.
-- Detección de errores específicos.
 
 > [!NOTE]
 > - No se permiten agrupaciones en las expresiones.

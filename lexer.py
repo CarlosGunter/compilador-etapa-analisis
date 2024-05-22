@@ -13,6 +13,7 @@ tokens = [
     ('ID', r'[a-zA-Z_][a-zA-Z_0-9]*'),
     ('AR_OP', r'[+\-*/%]'),
     ('REL_OP', r'[<>=!]=|<|>'),
+    ('LOG_OP', r'and|or'),
     ('PAREN', r'[()]'),
     ('COMMA', r','),
     ('LINE_END', r'\n'),

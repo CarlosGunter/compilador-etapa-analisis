@@ -1,7 +1,5 @@
 # Autor: Carlos Alberto Gutierrez Trejo
 # Compiladores - Analizador semantico
-# Notas:
-# Cada analisis debe retornar la posicion siguiente del ultimo token analizado
 from lexer import lex
 
 class semantic:
@@ -50,31 +48,24 @@ class semantic:
             # Verificar si el token es una funcion
             if value == 'def':
                 # Crear ambito de la funcion
-                pos, currScope = functions(tokens, token, currScope, line)
-                if pos == -1: break
-                iT = pos
+                iT, currScope = functions(tokens, token, currScope, line)
             # Verificar si el token es una estructura de control
             elif group == 'STRUCT_C':
                 # Crear ambito de la estructura
-                pos, currScope = structure(tokens, token, currScope, line)
-                iT = pos
+                iT, currScope = structure(tokens, token, currScope, line)
             # Verificar si el token es una asignacion
             elif group == 'ASSIGN':
                 # Verificar si el token anterior es un ID
                 if tokens[i - 1]["type"] != 'ID':
-                    print(f"Se esperaba un ID. Linea {line}")
-                    iT = i+1
-                    continue
-                # Realizar asignacion
-                pos = assign(tokens, token, currScope, line, tokens[i - 1]["value"])
-                if pos == -1: break
-                iT = pos
+                    print(f"Se esperaba un ID para asignar. Linea {line}")
+                    iT, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
+                else:
+                    # Realizar asignacion
+                    iT = assign(tokens, token, currScope, line, tokens[i - 1]["value"])
             # Verificar si el token es un operador aritmetico o relacional
             elif group in ['AR_OP', 'REL_OP']:
                 # Realizar operacion
-                pos, _ = expression(tokens, token, currScope, line)
-                if pos == -1: break
-                iT = pos
+                iT, _ = expression(tokens, token, currScope, line)
             # Verificar si el token es un salto de linea
             # Incrementar contador de lineas
             elif group == 'LINE_END': line += 1; iT += 1
@@ -85,16 +76,16 @@ class semantic:
             # Imprimir mapa de ambitos
         print(ambitMap)
 
+# Cada analisis debe retornar el salto de linea al final del lexema
 def functions(tokens, token, parent, line):
     # Lexema: def ID (ID, ID, ...):
     i, ident = token["i"], token["ident"]
-    pos = i
     # ID de la funcion
     if tokens[i + 1]["type"] == 'ID': funcID = tokens[i + 1]["value"]
     else: # Si no hay ID -> Error
         print(f"Se esperaba un ID. Linea {line}")
-        return -1, parent
-    pos += 1
+        pos, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
+        return pos, parent
     # Crear ambito de la funcion
     newParent = ambitMap[parent]["parent"][:] # Copiar scope padre
     newParent.insert(0, parent) # Agregar padre
@@ -106,15 +97,15 @@ def functions(tokens, token, parent, line):
     # Parametros de la funcion
     if tokens[i + 2]["value"] != '(': # Si no hay '(' -> Error
         print(f"Se esperaba '('. Linea {line}")
-        return -1, funcID
-    # No hay parametros
-    if tokens[i + 3]["value"] == ')' and tokens[i + 4]["value"] == ':':
-        pos = i + 4
+        pos, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
+        return pos, parent
     # Si hay parametros
     else:
+        # Buscar cierre de parentesis
+        pos, findFound = findEnd(tokens, i+2, line, end=('value', ')'))
+        if not findFound: return pos, parent # Si no se encuentra -> Error
         # Recorrer parametros
-        for j in range(i + 3, len(tokens), 2):
-            pos = j
+        for j in range(i + 3, pos, 2):
             # Verificar si hay parametros y agregarlos al mapa
             if tokens[j]["type"] == 'ID':
                 ambitMap[funcID]["vars"][tokens[j]["value"]] = {
@@ -122,23 +113,22 @@ def functions(tokens, token, parent, line):
                     'value': None,
                 }
                 print(f"{tokens[j]['value']} -> tipo: PARAM, ambito: {funcID}")
-            # Si termina la declaracion
-            elif tokens[j]["value"] == ':':
-                pos += 1
-                break
             # Si no hay ID -> Error
             else:
                 print(f"Se esperaba un ID. Linea {line}")
                 break
             # Verificar si los parametros estan separados por coma
             if not tokens[j+1]["value"] in [',', ')']:
-                print(f"Formato de parametro incorrecto en la funcion. Linea {line}")
-    # Verificar identacion
-    if tokens[pos + 1]["type"] == 'LINE_END' and tokens[pos + 2]["ident"] <= ident:
-        print(f"Se esperaba identacion de bloque. Linea {line+1}")
-        return -1, parent
-    # Agregar identacion
-    ambitMap[funcID]["ident"] = tokens[pos + 2]["ident"]
+                print(f"Se esperaba coma. Linea {line}")
+    # Verificar si hay ':'
+    pos, findFound = findEnd(tokens, i, line, end=('value', ':'))
+    if findFound: pos += 1 # Posicionar en el salto de linea
+    else: print(f"Se esperaba ':'. Linea {line}") # Si no se encuentra -> Error
+    # Verificar indentacion
+    if pos+1 < len(tokens) and tokens[pos + 1]["ident"] <= ident:
+        print(f"Se esperaba bloque indentado. Linea {line}")
+    # Agregar indentacion
+    else: ambitMap[funcID]["ident"] = tokens[pos + 2]["ident"]
     # Retornar posicion y nuevo scope
     return pos, funcID
 
@@ -172,6 +162,7 @@ def assign(tokens, token, currScope, line, assignID):
         print(f"Se esperaba un operador. Linea {line}")
         # Buscar siguinte salto de linea
         while tokens[pos]["type"] != 'LINE_END': pos += 1
+        pos += 1
     # Agregar variable al mapa
     if not findVar(assignID, currScope):
         ambitMap[currScope]["vars"][assignID] = {
@@ -181,19 +172,21 @@ def assign(tokens, token, currScope, line, assignID):
     print(f"{assignID} -> tipo: {findVar(assignID, currScope)['type']}, ambito: {currScope}")
     return pos
 
-def expression(tokens, token, currScope, line):
+def expression(tokens, token, currScope, line, end=('type', 'LINE_END')):
     # Lexema: FACTOR OPERADOR FACTOR... OPERADOR FACTOR
     # Token actual -> OPERADOR
     i, value, type = token["i"], token["value"], token["type"]
     pos = i
     currType = 'Any'
+    end_eval, end_value = end
     # Recorrer operadores
     for j in range(i, len(tokens), 2):
-        pos = j
-        evalType = True
+        pos = j # Actualizar posicion
+        evalType = True # Bandera para evaluar tipos
         # Romper si termina la expresion
-        if tokens[j]["type"] in ('LINE_END', 'PAREN'): break
-        elif tokens[j]["value"] == ':': break
+        if tokens[j][end_eval] == end_value: break
+        if tokens[j]["type"] in ('LINE_END', 'PAREN'): break # Borrar
+        elif tokens[j]["value"] == ':': break # Borrar
         # Verificar operador
         if tokens[j]["type"] not in ['AR_OP', 'REL_OP']:
             print(f"Operador {tokens[j]["value"]} no valido. Linea {line}")
@@ -204,10 +197,10 @@ def expression(tokens, token, currScope, line):
         nx_v, nx_t = tokens[i + 1]["value"], tokens[i + 1]["type"]
         # Verificar si los factores son validos
         if not pv_t in ['INT', 'FLOAT', 'STRING', 'BOOL', 'ID']:
-            print(f"'{pv_t}' no valido. Linea {line}")
+            print(f"'{pv_t}' no se puede operar. Linea {line}")
             evalType = False
         if not nx_t in ['INT', 'FLOAT', 'STRING', 'BOOL', 'ID']:
-            print(f"'{nx_t}' no valido. Linea {line}")
+            print(f"'{nx_t}' no se puede operar. Linea {line}")
             evalType = False
         # Verificar si los factores son IDs y estan declarados
         if pv_t == 'ID' and not findVar(pv_v, currScope):
@@ -235,7 +228,6 @@ def structure(tokens, token, parent, line):
     # Lexema: While | If | For | EXPRESIN:
     i, value, ident = token["i"], token["value"], token["ident"]
     currScope = f'{value}_{line}'
-    pos = i+1
     # Crear ambito
     newParent = ambitMap[parent]["parent"][:] # Copiar scope padre
     newParent.insert(0, parent) # Agregar padre
@@ -246,23 +238,34 @@ def structure(tokens, token, parent, line):
     print(f"{currScope} -> Ambito creado. Linea {line} (Resolucion de nombres)")
     # While o If -> While | if | elif EXPRESION:
     if value in ['while', 'if', 'elif']:
-        lex = [ # Lexema del while o if
-            ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
-            ('type', ['REL_OP']),
-            ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
-            ('value', [':'])
-        ]
-        for j in range(len(lex)):
-            k, v = lex[j]
-            pos = i+j+1
-            if tokens[pos]['type'] == 'LINE_END':
-                print(f"Expresion incompleta. Linea {line}")
-                break
-            if not tokens[pos][k] in v:
-                print(f"Se esperaba '{v}'. Linea {line}")
-        # Verificar si hay un operador
-        if tokens[i + 3]["type"] == 'REL_OP':
-            pos, _ = expression(tokens, tokens[i+1], parent, line)
+        # Buscar ':'
+        pos, findFound = findEnd(tokens, i, line, end=('value', ':'))
+        end = ('value', ':') if findFound else ('type', 'LINE_END')
+        # Si hay solo un factor
+        if pos - i <= 2 and not tokens[i + 1]["type"] in ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']:
+            print(f"Se esperaba una expresion. Linea {line}")
+            return pos, parent
+        else:
+            # Verificar si hay operadores
+            if tokens[i + 2]["type"] in ['REL_OP', 'AR_OP', 'LOG_OP']:
+                pos, _ = expression(tokens, tokens[i+2], parent, line, end=end)
+        # lex = [ # Lexema del while o if
+        #     ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
+        #     ('type', ['REL_OP']),
+        #     ('type', ['ID', 'INT', 'FLOAT', 'STRING', 'BOOL']),
+        #     ('value', [':'])
+        # ]
+        # for j in range(len(lex)):
+        #     k, v = lex[j]
+        #     pos = i+j+1
+        #     if tokens[pos]['type'] == 'LINE_END':
+        #         print(f"Expresion incompleta. Linea {line}")
+        #         break
+        #     if not tokens[pos][k] in v:
+        #         print(f"Se esperaba '{v}'. Linea {line}")
+        # # Verificar si hay un operador
+        # if tokens[i + 3]["type"] == 'REL_OP':
+        #     pos, _ = expression(tokens, tokens[i+1], parent, line)
     # For ID in EXPRESION:
     elif value == 'for':
         lex = [ # Lexema del for
@@ -298,14 +301,13 @@ def structure(tokens, token, parent, line):
             print(f"Se esperaba ':'. Linea {line}")
         if tokens[i + 2]['type'] != 'LINE_END':
             print(f"Se esperaba una nueva linea. Linea {line}")
-        pos = i+1
+    # Buscar salto de linea
+    pos, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
     # Verificar identacion en siguiente linea
-    if tokens[pos + 1]["type"] == 'LINE_END' and tokens[pos + 2]["ident"] <= ident:
-        print(f"Se esperaba identacion. Linea {line+1}")
     if tokens[pos]["type"] == 'LINE_END' and tokens[pos + 1]["ident"] <= ident:
         print(f"Se esperaba identacion de bloque. Linea {line+1}")
     # Agregar identacion
-    ambitMap[currScope]["ident"] = tokens[pos + 2]["ident"]
+    ambitMap[currScope]["ident"] = tokens[pos + 1]["ident"]
     # Retornar posicion y nuevo scope
     return pos, currScope
 
@@ -317,6 +319,27 @@ def findVar(var, scope):
     for pnt in ambitMap[scope]["parent"]:
         if var in ambitMap[pnt]["vars"]: return ambitMap[pnt]["vars"][var]
     return None
+
+# Buscar el final de la expresion
+def findEnd(tokens, i, line, end):
+    endEval, endValue = end
+    if len(tokens) <= i: return i, False
+    while tokens[i][endEval] != endValue:
+        if i+1 >= len(tokens) or tokens[i]["type"] == 'LINE_END': break
+        i += 1
+    # Verificar errores
+    if (
+    # Si el token actual es un salto de linea pero no es el buscado
+    endValue != 'LINE_END' and
+    tokens[i]["type"] == 'LINE_END'
+    ) or (
+    # Si el token actual es el ultimo pero no es el buscado
+    i == len(tokens) - 1 and
+    tokens[i]["type"] != 'LINE_END'
+    ):
+        print(f"Se esperaba '{endValue}'. Linea {line}")
+        return i, False
+    return i, True
 
 if __name__ == '__main__':
     print("Ingresa el codigo. (Presiona Ctrl + Z + Enter para finalizar):")
