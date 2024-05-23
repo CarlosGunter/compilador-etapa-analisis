@@ -2,7 +2,6 @@
 # Compiladores - Analizador semanico
 from lexer import Lexer
 from semantic import Semantic
-import numpy as np
 
 test_list = [
     {

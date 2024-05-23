@@ -1,8 +1,6 @@
 # Metodo principal que se encarga de pedor el archivo de entrada
 # Llama a la clase semantic para obtener el analisis
 import sys
-from itertools import groupby
-from operator import itemgetter
 from tkinter import filedialog
 from lexer import Lexer
 from semantic import Semantic
