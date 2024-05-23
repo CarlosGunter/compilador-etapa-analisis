@@ -14,7 +14,7 @@ def my_func(x, y):
     z = 0
 # Estructura for:
 for i in range(0, 10):
-    x = i  
+    x = i
 x = 0
 # Estructura while:
 while x > 10 or x:
@@ -40,7 +40,7 @@ y = x
 i = "Hola"
 # Cerrar ambito:
 b = 1
-def my_func():
+def fun():
     z = 0
     if z < 2:
         x = z
