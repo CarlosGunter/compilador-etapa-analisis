@@ -47,5 +47,5 @@ def fun():
         z = x
     a = 1
 z = 2 + 1
-my_func()
+my_func(x , y)
 print(z)
