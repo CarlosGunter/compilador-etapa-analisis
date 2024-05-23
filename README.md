@@ -10,10 +10,22 @@ Análisis sintáctico:
   * Valor.
   * Sangria.
 
-Análisis semántico:
+Análisis sintáctico y semántico:
 - Verificación de tipos.
 - Resolución de nombres.
 - Análisis de contexto.
+- Mapa de ámbitos.
+
+**Soporte**
+  - Variables (int, float, string, bool)"
+  - Funciones (con parámetros)"
+  - Estructuras de control (if, elif, else, for, while)"
+  - Operadores:"
+    * Aritméticos: +, -, *, /, %"
+    * Relacionales: ==, !=, <, >, <=, >="
+    * Lógicos: and, or"
+  - Asignaciones"
+  - Comentarios"
 
 > [!NOTE]
 > - No se permiten agrupaciones en las expresiones.
