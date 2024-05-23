@@ -1,8 +1,8 @@
 # Autor: Carlos Alberto Gutierrez Trejo
 # Compiladores - Analizador semantico
-from lexer import lex
+from lexer import Lexer
 
-class semantic:
+class Semantic:
     def __init__(self, tokens):
         # Mapa de identificadores
         self.ambitMap = {
@@ -27,7 +27,7 @@ class semantic:
         line= 1
         # Recorrido de tokens
         iT = 0
-        while iT < len(tokens)-1:
+        while iT < len(tokens):
             # Obtener token
             token = tokens[iT]
             i, group, value, ident = token["i"], token["type"], token["value"], token["ident"]
@@ -135,7 +135,7 @@ def functions(tokens, token, parent, line):
 def assign(tokens, token, currScope, line, assignID):
     # Lexema: ID = EXPRESION
     i = token["i"]
-    pos = i
+    pos = i + 1
     currType = 'Any'
     # Verificar si la asignacion dispone solo de un factor
     # ID = factor
@@ -144,13 +144,14 @@ def assign(tokens, token, currScope, line, assignID):
         # ID = ID | INT | FLOAT | STRING | BOOL
         if not tokens[i+1]["type"] in ['INT', 'FLOAT', 'STRING', 'BOOL', 'ID']:
             print(f"Dato no valido. Linea {line}")
-            return pos+2
+            pos, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
+            return pos
         # Verificar si el factor es un ID y esta inicializado
         # ID = ID -> Verificar si el ID esta inicializado
         if tokens[i + 1]["type"] == 'ID' and not findVar(tokens[i + 1]["value"], currScope):
             print(f"'{tokens[i + 1]['value']}' aun no inicializada. Linea {line}")
-            return pos+2
-        pos += 2
+            pos, _ = findEnd(tokens, i, line, end=('type', 'LINE_END'))
+            return pos
         # Determinar el tipo de la variable
         currType = findVar(tokens[i + 1]["value"], currScope)["type"] if tokens[i + 1]["type"] == 'ID' else tokens[i + 1]["type"]
     # Resolver la expresion
@@ -162,7 +163,7 @@ def assign(tokens, token, currScope, line, assignID):
         print(f"Se esperaba un operador. Linea {line}")
         # Buscar siguinte salto de linea
         while tokens[pos]["type"] != 'LINE_END': pos += 1
-        pos += 1
+        pos, _ = findEnd(tokens, pos, line, end=('type', 'LINE_END'))
     # Agregar variable al mapa
     if not findVar(assignID, currScope):
         ambitMap[currScope]["vars"][assignID] = {
@@ -176,31 +177,32 @@ def expression(tokens, token, currScope, line, end=('type', 'LINE_END')):
     # Lexema: FACTOR OPERADOR FACTOR... OPERADOR FACTOR
     # Token actual -> OPERADOR
     i, value, type = token["i"], token["value"], token["type"]
-    pos = i
     currType = 'Any'
     end_eval, end_value = end
+    # Buscar final de la expresion
+    pos, _ = findEnd(tokens, i, line, end)
     # Recorrer operadores
-    for j in range(i, len(tokens), 2):
-        pos = j # Actualizar posicion
+    for j in range(i, pos, 2):
         evalType = True # Bandera para evaluar tipos
-        # Romper si termina la expresion
         if tokens[j][end_eval] == end_value: break
-        if tokens[j]["type"] in ('LINE_END', 'PAREN'): break # Borrar
-        elif tokens[j]["value"] == ':': break # Borrar
         # Verificar operador
         if not tokens[j]["type"] in ['AR_OP', 'REL_OP', 'LOG_OP']:
             print(f"Operador {tokens[j]["value"]} no valido. Linea {line}")
             pos, _ = findEnd(tokens, j, line, end=('type', 'LINE_END'))
             break
+        # Verificar si el indice siguiente se encuentra en el rango
+        if j + 1 >= len(tokens):
+            print(f"Se esperaba un factor. Linea {line}")
+            break
         # Obtener factores
-        pv_v, pv_t = tokens[i - 1]["value"], tokens[i - 1]["type"]
-        nx_v, nx_t = tokens[i + 1]["value"], tokens[i + 1]["type"]
+        pv_v, pv_t = tokens[j - 1]["value"], tokens[j - 1]["type"]
+        nx_v, nx_t = tokens[j + 1]["value"], tokens[j + 1]["type"]
         # Verificar si los factores son validos
         if not pv_t in ['INT', 'FLOAT', 'STRING', 'BOOL', 'ID']:
-            print(f"'{pv_t}' no se puede operar. Linea {line}")
+            print(f"'{pv_v}' no se puede operar. Linea {line}")
             evalType = False
         if not nx_t in ['INT', 'FLOAT', 'STRING', 'BOOL', 'ID']:
-            print(f"'{nx_t}' no se puede operar. Linea {line}")
+            print(f"'{nx_v}' no se puede operar. Linea {line}")
             evalType = False
         # Verificar si los factores son IDs y estan declarados
         if pv_t == 'ID' and not findVar(pv_v, currScope):
@@ -306,34 +308,20 @@ def findVar(var, scope):
 # Buscar el final de la expresion
 def findEnd(tokens, i, line, end):
     endEval, endValue = end
-    if len(tokens) <= i: return i, False
-    while tokens[i][endEval] != endValue:
-        if i+1 >= len(tokens) or tokens[i]["type"] == 'LINE_END': break
+    if not i+1 <= len(tokens): return len(tokens), False
+    while i+1 < len(tokens) and tokens[i][endEval] != endValue:
+        if i >= len(tokens) or tokens[i]["type"] == 'LINE_END': break
         i += 1
     # Verificar errores
     if (
     # Si el token actual es un salto de linea pero no es el buscado
     endValue != 'LINE_END' and
     tokens[i]["type"] == 'LINE_END'
-    ) or (
+    ) and (
     # Si el token actual es el ultimo pero no es el buscado
     i == len(tokens) - 1 and
     tokens[i]["type"] != 'LINE_END'
     ):
-        print(f"Se esperaba '{endValue}'. Linea {line}")
+        print(f"Se esperaba '{endValue}'. Linea {line} {i} {len(tokens)}")
         return i, False
     return i, True
-
-if __name__ == '__main__':
-    print("Ingresa el codigo. (Presiona Ctrl + Z + Enter para finalizar):")
-    inp = []
-    while True:
-        try:
-            line = input()
-            inp.append(line)
-        except EOFError:
-            break
-    inp.append("\n  ")
-    code = "\n".join(inp)
-    table = lex(code)
-    semantic(list(table))

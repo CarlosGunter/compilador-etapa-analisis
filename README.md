@@ -17,4 +17,4 @@ Análisis semántico:
 
 > [!NOTE]
 > - No se permiten agrupaciones en las expresiones.
-> - Solo se permite una condición en las estructuras.
+> - La estructura for solo permite parámetro range con inicio y final.

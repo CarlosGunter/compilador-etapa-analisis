@@ -21,29 +21,29 @@ tokens = [
     ('WS', r'\s+'),  # Ignorar espacios en blanco
     ('UNRECOGNIZED', r'.'),  # Caracteres no reconocidos
 ]
-
-# Función para escanear la entrada y producir tokens
-def lex(input_str):
-    token_exprs = '|'.join('(?P<%s>%s)' % pair for pair in tokens)
-    regex = re.compile(token_exprs)
-    i = 0
-    ident = 0
-    pos = 0
-    while pos < len(input_str):
-        match = regex.match(input_str, pos)
-        token_type = match.lastgroup
-        token_value = match.group(token_type)
-        if token_type == 'IDENT': ident = len(token_value)
-        if token_type == 'LINE_END': ident = 0
-        if not token_type in ['WS', 'LINE_COMMENT', 'IDENT']:
-            yield {
-                "i": i,
-                "type": token_type,
-                "value": token_value,
-                "ident": ident
-            }
-            i += 1
-        pos = match.end()
+class Lexer:
+    # Función para escanear la entrada y producir tokens
+    def lex(input_str):
+        token_exprs = '|'.join('(?P<%s>%s)' % pair for pair in tokens)
+        regex = re.compile(token_exprs)
+        i = 0
+        ident = 0
+        pos = 0
+        while pos < len(input_str):
+            match = regex.match(input_str, pos)
+            token_type = match.lastgroup
+            token_value = match.group(token_type)
+            if token_type == 'IDENT': ident = len(token_value)
+            if token_type == 'LINE_END': ident = 0
+            if not token_type in ['WS', 'LINE_COMMENT', 'IDENT']:
+                yield {
+                    "i": i,
+                    "type": token_type,
+                    "value": token_value,
+                    "ident": ident
+                }
+                i += 1
+            pos = match.end()
 
 # Ejemplo de uso
 if __name__ == '__main__':
@@ -61,6 +61,10 @@ if __name__ == '__main__':
 def my_func(x, y):
     print(x + y)
     '''
+
+    input_string = '''z = 1 + 2 - 3'''
     
-    table = lex(input_string)
-    print(list(table))
+    table = Lexer.lex(input_string)
+    print(len(list(table)))
+    for token in table:
+        print(token)

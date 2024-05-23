@@ -1,7 +1,7 @@
 # Autor: Carlos Alberto Gutierrez Trejo
 # Compiladores - Analizador semanico
-from lexer import lex
-from semantic import semantic
+from lexer import Lexer
+from semantic import Semantic
 import numpy as np
 
 test_list = [
@@ -88,6 +88,10 @@ def my_func():
         y = x
     a = 1
         '''
+    },
+    {
+        'name': "temp",
+        'input': '''z = 1 + 2 - 3'''
     }
 ]
 
@@ -95,8 +99,9 @@ if __name__ == '__main__':
     for test in test_list:
         print("------------------------------------------------------------")
         print(f"{test['name']}:")
-        table = list(lex(test["input"]))
-        # print("***********************************************************")
-        # print(np.asarray(table))
-        # print("***********************************************************")
-        semantic(table)
+        table = Lexer.lex(test["input"])
+        table = list(table)
+        print("***********************************************************")
+        print(np.asarray(table))
+        print("***********************************************************")
+        Semantic(table)
